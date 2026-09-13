@@ -5,8 +5,8 @@
 // SUPABASE_ANON_KEY = "anon public" key (safe to expose in client code —
 //                      it can ONLY do what the RLS policies in schema.sql allow)
 // ============================================================
-const SUPABASE_URL = "sb_publishable_00jBmgY7osTCEIJ9TrjKug_Wh_Xem_I";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaHlxeWZtZGtmcnZhcWV2aHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzMjE1NTAsImV4cCI6MjEwNDg5NzU1MH0.ANg84e53CZBkAO8_vXcCh0Pj6Ll0toS7VQNn-PZ8ENg";
+const SUPABASE_URL = "https://fahyqyfmdkfrvaqevhyc.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_00jBmgY7osTCEIJ9TrjKug_Wh_Xem_I";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
