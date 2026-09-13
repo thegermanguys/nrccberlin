@@ -71,8 +71,29 @@ Once it's connected, you make all updates in the Supabase dashboard — no code 
 
 - **Squad** — Table Editor → `players`. Add a row for a new joiner, edit `role`/`captain`/`sort_order`, or delete a row when someone leaves. Upload their photo to the `player-photos` bucket and put the filename in `photo_path`.
 - **Schedule** — Table Editor → `fixtures`. Add a row per match. Leave `result` empty for upcoming matches; set it to `win`/`loss`/`draw` afterwards.
-- **Gallery** — Storage → `gallery-photos` to upload the image, then Table Editor → `gallery_photos` to add a row pointing at it (`photo_path`, `caption`, `category`).
+- **Gallery** — organized by album/tournament, see below.
 - **New joiners** — Table Editor → `join_requests`. Every submitted application appears here automatically (name, email, phone, role, message). Nobody but you can see this table — it's not exposed to the public site.
+
+## About the gallery — organized by tournament/album
+
+Instead of a database row per photo, the gallery groups photos by **album**
+(usually one per tournament or event). Adding a batch of photos is two steps:
+
+1. **Storage → gallery-photos** → create a folder named after the event
+   (e.g. `chanda-surya-cup-2025`) and drop all the photos for it inside.
+2. **Table Editor → gallery_albums** → add **one row**:
+   - `slug` — must exactly match the folder name (e.g. `chanda-surya-cup-2025`)
+   - `title` — what's shown on the site (e.g. "Chanda Surya Cup 2025")
+   - `category` — optional label (e.g. `tournament`, `friendly`, `training`)
+   - `sort_order` — controls ordering, lower shows first
+
+Every photo inside that folder shows up automatically. Adding more photos to
+an existing album later needs no database change — just drop more files into
+the folder.
+
+Run `supabase/gallery_albums_migration.sql` once to set this up (replaces the
+earlier one-row-per-photo `gallery_photos` table, safe since it's still empty).
+
 
 ## About the public gallery "upload" button
 

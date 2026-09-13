@@ -131,8 +131,8 @@
   </div>
 
   <!-- PHOTO GRID -->
-  <div class="photo-grid" id="photoGrid">
-    <!-- populated live from Supabase -->
+  <div id="photoGrid">
+    <!-- populated live from Supabase, grouped by tournament/album -->
   </div>
 </section>
 
@@ -169,9 +169,19 @@
 <script src="js/shared.js"></script>
 <script>
 // ---- GALLERY DATA (loaded live from Supabase) ----
-// To add photos: upload the file to the "gallery-photos" storage bucket,
-// then add a row in the gallery_photos table with that filename as photo_path.
-let photos = [];
+// To add a new tournament/album of photos:
+//   1. In Storage → gallery-photos, create a folder (e.g. "chanda-surya-cup-2025")
+//      and drop all the photos for that event into it.
+//   2. In Table Editor → gallery_albums, add ONE row: slug (must match the
+//      folder name exactly), title (shown on the site), category, sort_order.
+// That's it — every photo in the folder shows up automatically, no per-photo
+// database entry needed.
+let albums = [];   // [{ id, slug, title, category, sort_order, photos: [{name}] }]
+let photos = [];   // flattened list across all albums, in display order — used by carousel + lightbox
+
+function photoUrl(album, filename) {
+  return supabaseClient.storage.from('gallery-photos').getPublicUrl(`${album.slug}/${filename}`).data.publicUrl;
+}
 
 // ---- CAROUSEL ----
 let currentSlide=0;
@@ -202,38 +212,86 @@ function renderCarousel(){
   }
   track.innerHTML = photos.map((p,i)=>`
     <div class="carousel-slide" onclick="openLightbox(${i})">
-      <img src="${galleryPhotoUrl(p.photo_path)}" alt="${p.caption||''}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>
+      <img src="${p.url}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>
       <div class="slide-overlay"></div>
-      <div class="slide-caption"><div class="slide-label">${p.caption||''}</div><div class="slide-desc">${p.category||''}</div></div>
+      <div class="slide-caption"><div class="slide-label">${p.title}</div><div class="slide-desc">${p.category||''}</div></div>
     </div>
   `).join('');
   buildDots();
 }
 
-// ---- PHOTO GRID ----
+// ---- PHOTO GRID (grouped by album) ----
 function renderPhotos(){
-  const grid=document.getElementById('photoGrid');
-  if(!photos.length){
-    grid.innerHTML='<div class="photo-item"><div class="photo-placeholder"><span>🏏</span><p>Match photos coming soon</p></div></div>';
+  const container=document.getElementById('photoGrid');
+  container.innerHTML='';
+
+  if(!albums.length){
+    container.innerHTML='<div class="photo-grid"><div class="photo-item"><div class="photo-placeholder"><span>🏏</span><p>Match photos coming soon</p></div></div></div>';
     return;
   }
-  grid.innerHTML='';
-  photos.forEach((p,i)=>{
-    const item=document.createElement('div');item.className='photo-item';
-    item.onclick=()=>openLightbox(i);
-    item.innerHTML=`<img src="${galleryPhotoUrl(p.photo_path)}" alt="${p.caption||''}"/><div class="photo-item-label">${p.caption||''}</div>`;
-    grid.appendChild(item);
+
+  albums.forEach(album => {
+    if (!album.photos.length) return; // skip empty albums
+
+    const section = document.createElement('div');
+    section.className = 'reveal';
+    section.style.marginBottom = '36px';
+    section.innerHTML = `
+      <div class="section-label">${album.category || 'Gallery'}</div>
+      <h3 style="font-family:'Playfair Display',serif;color:var(--white);font-size:1.3rem;margin:4px 0 18px;">${album.title}</h3>
+      <div class="photo-grid"></div>
+    `;
+    container.appendChild(section);
+
+    const grid = section.querySelector('.photo-grid');
+    album.photos.forEach(filename => {
+      const globalIndex = photos.findIndex(p => p.albumSlug === album.slug && p.filename === filename);
+      const item = document.createElement('div');
+      item.className = 'photo-item';
+      item.onclick = () => openLightbox(globalIndex);
+      item.innerHTML = `<img src="${photoUrl(album, filename)}" alt="${album.title}"/><div class="photo-item-label">${album.title}</div>`;
+      grid.appendChild(item);
+    });
+
+    revealObserver.observe(section);
   });
 }
 
 async function loadGallery(){
-  const { data, error } = await supabaseClient
-    .from('gallery_photos')
+  const { data: albumRows, error } = await supabaseClient
+    .from('gallery_albums')
     .select('*')
     .order('sort_order', { ascending: true });
 
-  if (error) { console.error(error); photos = []; }
-  else { photos = data || []; }
+  if (error) { console.error(error); albums = []; photos = []; renderCarousel(); renderPhotos(); return; }
+
+  // For each album, list the actual files sitting in its storage folder
+  albums = await Promise.all((albumRows || []).map(async album => {
+    const { data: files, error: listError } = await supabaseClient
+      .storage.from('gallery-photos')
+      .list(album.slug, { sortBy: { column: 'name', order: 'asc' } });
+
+    if (listError) { console.error(listError); return { ...album, photos: [] }; }
+
+    const photoFiles = (files || [])
+      .filter(f => f.id && !f.name.startsWith('.'))   // skip folder placeholders/hidden files
+      .map(f => f.name);
+
+    return { ...album, photos: photoFiles };
+  }));
+
+  photos = [];
+  albums.forEach(album => {
+    album.photos.forEach(filename => {
+      photos.push({
+        albumSlug: album.slug,
+        filename,
+        url: photoUrl(album, filename),
+        title: album.title,
+        category: album.category
+      });
+    });
+  });
 
   renderCarousel();
   renderPhotos();
@@ -242,11 +300,11 @@ async function loadGallery(){
 // ---- LIGHTBOX ----
 let currentLightbox=0;
 function openLightbox(i){
-  if (!photos.length) return;
+  if (!photos.length || i < 0) return;
   currentLightbox=i;
-  document.getElementById('lightboxImg').src=galleryPhotoUrl(photos[i].photo_path);
+  document.getElementById('lightboxImg').src=photos[i].url;
   document.getElementById('lightboxImg').style.display='block';
-  document.getElementById('lightboxCaption').textContent=photos[i].caption||'';
+  document.getElementById('lightboxCaption').textContent=photos[i].title||'';
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow='hidden';
 }
