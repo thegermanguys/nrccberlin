@@ -144,57 +144,16 @@ code{background:rgba(0,212,200,0.12);border-radius:4px;padding:2px 7px;font-size
   </div>
 </footer>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/shared.js"></script>
 <script>
-// ---- PLAYER DATA ----
-// To add a player: add an entry below.
-// photoFile: filename in lib/players/ (e.g. "awanish.jpg")
-// Leave photoFile empty ("") to show the emoji fallback.
-const players = [
-  {name:"Awanish",role:"All-Rounder",emoji:"🏏⚾︎",captain:true, photoFile:"awanish.png"},
-  {name:"Sameer",role:"Batsman",emoji:"🏏", captain:false, photoFile:"sameer.png"},
-  {name:"Ananta",role:"Batsman",emoji:"🏏", captain:false, photoFile:"ananta.png"},
-  {name:"Krishna",role:"Batsman",emoji:"🏏", captain:false, photoFile:"krishna.png"},
-  {name:"Ashim",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"ashim.png"},
-  {name:"Pradeep",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"pradeep.png"},
-  {name:"Suraj",role:"All-Rounder",emoji:"🏏🧤⚾︎", captain:false, photoFile:"suraj.png"},
-  {name:"Mubesh",role:"Batsman",emoji:"🏏", captain:false, photoFile:"mubesh.png"},
-  {name:"Subash",role:"Bowler",emoji:"⚾︎", captain:false, photoFile:"subash.png"},
-  {name:"Manoj",role:"Bowler",emoji:"⚾︎", captain:false, photoFile:"manoj.png"},
-  {name:"Sanjay",role:"Batsman",emoji:"🏏", captain:false, photoFile:"sanjay.png"},
-  {name:"Kshitiz",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"kshitiz.png"},
-  {name:"Robin",role:"Bowler",emoji:"⚾︎", captain:false, photoFile:"roben.png"},
-  {name:"Niwesh",role:"Batsman",emoji:"🏏", captain:false, photoFile:"niwesh.png"},
-  {name:"Lokesh",role:"Batsman",emoji:"🏏", captain:false, photoFile:"lokesh.png"},
-  {name:"Bikash",role:"Batsman",emoji:"🏏", captain:false, photoFile:"bikash.png"},
-  {name:"Agin",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"agin.png"},
-  {name:"Nitesh",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"nitesh.png"},
-  {name:"Bikram",role:"Batsman",emoji:"🏏", captain:false, photoFile:"bikram.png"},
-  {name:"Kushal",role:"Batsman",emoji:"🏏", captain:false, photoFile:"kushal.png"},
-  {name:"Sushant",role:"Bowler",emoji:"⚾︎", captain:false, photoFile:"sushant.png"},
-  {name:"Pawan",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"pawan.png"},
-  {name:"Shushovan",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"sakya.png"},
-  {name:"Cheeran",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"cheeran.png"},
-  {name:"Manish",role:"Batsman",emoji:"🏏", captain:false, photoFile:"manish.png"},
-  {name:"Janak",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"janak.png"},
-  {name:"Biplab",role:"All-Rounder",emoji:"🏏⚾︎", captain:false, photoFile:"biplap.png"},
-  {name:"Sudip",role:"Batsman",emoji:"🏏", captain:false, photoFile:"sudip.png"},
-  {name:"Nabin",role:"Batsman",emoji:"🏏", captain:false, photoFile:"nabin.png"},
-  {name:"Dipesh",role:"Batsman",emoji:"🏏", captain:false, photoFile:"dipesh.png"},
-  {name:"Sujan",role:"Batsman",emoji:"🏏", captain:false, photoFile:"sujan.png"},
-   {name:"Niroj",role:"Batsman",emoji:"🏏", captain:false, photoFile:"niroj.png"},
-  {name:"Razu",role:"Batsman",emoji:"🏏", captain:false, photoFile:"razu.png"},
-  {name:"Dipendra",role:"Bowler",emoji:"⚾︎", captain:false, photoFile:"dipendra.png"},
-];
-
-// Browser-session overrides from inline uploads (hover → camera click)
-const sessionPhotos = {};
-
-// ---- RENDER ----
-function buildPhotoSrc(p) {
-  if (sessionPhotos[p.name]) return sessionPhotos[p.name]; // inline upload
-  return p.photoFile ? `lib/players/${p.photoFile}` : null;
-}
+// ---- PLAYER DATA (loaded live from Supabase) ----
+// To add/edit players: use the Supabase Table Editor (table: players).
+// To add a player photo: upload it to the "player-photos" storage bucket,
+// then set that player's photo_path to the uploaded filename.
+let players = [];
 
 function renderPlayers(list) {
   const grid = document.getElementById('playersGrid');
@@ -202,10 +161,10 @@ function renderPlayers(list) {
   if (!list.length) { grid.innerHTML = '<div class="no-results">No players found 🔍</div>'; return; }
 
   list.forEach((p, i) => {
-    const photoSrc = buildPhotoSrc(p);
+    const photoSrc = playerPhotoUrl(p.photo_path);
     const photoContent = photoSrc
-      ? `<img src="${photoSrc}" alt="${p.name}" onerror="this.parentElement.innerHTML='<span class=\\'player-photo-emoji\\'>${p.emoji}</span>'">`
-      : `<span class="player-photo-emoji">${p.emoji}</span>`;
+      ? `<img src="${photoSrc}" alt="${p.name}" onerror="this.parentElement.innerHTML='<span class=\\'player-photo-emoji\\'>${p.emoji || '🏏'}</span>'">`
+      : `<span class="player-photo-emoji">${p.emoji || '🏏'}</span>`;
 
     const card = document.createElement('div');
     card.className = 'player-card';
@@ -215,29 +174,12 @@ function renderPlayers(list) {
         <div class="player-photo">${photoContent}</div>
         <div class="bat-badge">🏏</div>
         ${p.captain ? '<div class="captain-badge">C</div>' : ''}
-        <button class="upload-photo-btn" title="Upload photo for ${p.name}" onclick="triggerPhotoUpload('${p.name}', ${i})">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 13v-4H8l4-4 4 4h-3v4h-2z"/></svg>
-          Photo
-        </button>
-        <input type="file" id="photoInput_${i}" accept="image/*" style="display:none" onchange="handlePlayerPhoto(event,'${p.name}')"/>
       </div>
       <div class="player-name">${p.name}${p.captain ? ' 🏅' : ''}</div>
       <div class="player-role">${p.role}</div>
     `;
     grid.appendChild(card);
   });
-}
-
-function triggerPhotoUpload(name, idx) {
-  document.getElementById('photoInput_' + idx).click();
-}
-
-function handlePlayerPhoto(e, name) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const url = URL.createObjectURL(file);
-  sessionPhotos[name] = url;
-  filterPlayers(); // re-render
 }
 
 // ---- FILTER / SORT ----
@@ -260,7 +202,24 @@ function filterPlayers() {
   renderPlayers(l);
 }
 
-renderPlayers(players);
+async function loadPlayers() {
+  const grid = document.getElementById('playersGrid');
+  grid.innerHTML = '<div class="no-results">Loading squad…</div>';
+  const { data, error } = await supabaseClient
+    .from('players')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error(error);
+    grid.innerHTML = '<div class="no-results">Could not load the squad right now. Please try again shortly.</div>';
+    return;
+  }
+  players = data || [];
+  filterPlayers();
+}
+
+loadPlayers();
 </script>
 </body>
 </html>

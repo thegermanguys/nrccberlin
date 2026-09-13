@@ -273,6 +273,8 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/shared.js"></script>
 <script>
 async function fetchWeather(){
@@ -289,14 +291,38 @@ async function fetchWeather(){
 }
 fetchWeather();
 
-function submitForm(){
+async function submitForm(){
   let valid=true;
   [{id:'fname',err:'fname-err',check:v=>v.trim().length>1},{id:'lname',err:'lname-err',check:v=>v.trim().length>1},{id:'email',err:'email-err',check:v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)},{id:'role',err:'role-err',check:v=>v!==''}].forEach(f=>{
     const el=document.getElementById(f.id),err=document.getElementById(f.err);
     if(!f.check(el.value)){el.classList.add('error');err.classList.add('show');valid=false;}
     else{el.classList.remove('error');err.classList.remove('show');}
   });
-  if(valid){document.getElementById('joinForm').style.display='none';document.getElementById('formSuccess').classList.add('show');}
+  if(!valid)return;
+
+  const btn=document.querySelector('#joinForm button.btn-primary');
+  const originalLabel=btn.textContent;
+  btn.disabled=true;btn.textContent='Sending...';
+
+  const { error } = await supabaseClient.from('join_requests').insert({
+    first_name: document.getElementById('fname').value.trim(),
+    last_name: document.getElementById('lname').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    phone: document.getElementById('phone').value.trim() || null,
+    playing_role: document.getElementById('role').value,
+    experience: document.getElementById('exp').value || null,
+    message: document.getElementById('message').value.trim() || null
+  });
+
+  btn.disabled=false;btn.textContent=originalLabel;
+
+  if(error){
+    console.error(error);
+    alert('Sorry, something went wrong sending your application. Please try again in a moment.');
+    return;
+  }
+  document.getElementById('joinForm').style.display='none';
+  document.getElementById('formSuccess').classList.add('show');
 }
 ['fname','lname','email','role'].forEach(id=>{
   const el=document.getElementById(id);

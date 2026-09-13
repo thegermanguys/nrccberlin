@@ -1,0 +1,16 @@
+-- The old gallery page only had 2 real photos (WhatsApp exports) plus 6 fake
+-- placeholder cards, so there isn't much worth auto-seeding.
+--
+-- To add a photo:
+-- 1. Supabase Dashboard → Storage → gallery-photos → Upload file
+--    (rename it to something simple first, e.g. "final-2025.jpg" —
+--    avoid spaces and parentheses in the filename)
+-- 2. Supabase Dashboard → Table Editor → gallery_photos → Insert row:
+--      photo_path : final-2025.jpg   (must match the uploaded filename exactly)
+--      caption    : NRNA Final 2025
+--      category   : tournament
+--      sort_order : 1
+--
+-- Or do the same thing as SQL, once the file is uploaded:
+-- insert into gallery_photos (photo_path, caption, category, sort_order) values
+--   ('final-2025.jpg', 'NRNA Final 2025', 'tournament', 1);

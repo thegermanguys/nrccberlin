@@ -170,51 +170,46 @@
   </div>
 </footer>
 
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/shared.js"></script>
 <script>
-// ---- FIXTURE DATA ----
-// Add more fixtures here. result: 'win'|'loss'|'draw'|'' (upcoming)
-const fixtures = [
-  {day:"1",month:"May",home:"NRCC Berlin",away:"NSCA Hamburg",venue:"Hamburg",type:"friendly",result: 'win'},  
-  {day:"30",month:"May",home:"NRCC Berlin",away:"NDCC",venue:"Ziegelbusch Cricket Ground Darmstadt",type:"NRNA Tournament",result: 'loss'},
-  {day:"30",month:"May",home:"NRCC Berlin",away:"NCT Giessen",venue:"Ziegelbusch Cricket Ground Darmstadt",type:"NRNA Tournament",result: 'win'},
-  {day:"14",month:"June",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Fussballplatz Borsigpark",type:"friendly",result: 'loss'},
-  {day:"14",month:"June",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Fussballplatz Borsigpark",type:"friendly",result: 'win'},
-  {day:"14",month:"June",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Fussballplatz Borsigpark",type:"friendly",result: 'win'},
-  {day:"21",month:"June",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Paracelsus bad",type:"friendly",result: 'loss'},
-  {day:"12",month:"July",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Rehberge",type:"friendly",result: 'win'},
-  {day:"12",month:"July",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Rehberge",type:"friendly",result: 'win'},
-  {day:"12",month:"July",home:"NRCC Berlin",away:"Berlin Mavericks",venue:"Rehberge",type:"friendly",result: 'win'},
-  {day:"19",month:"July",home:"NRCC Berlin",away:"NSNRW",venue:"Soest",type:"Chanda Surya Cup 2.0",result: 'loss'},
-];
+// ---- FIXTURE DATA (loaded live from Supabase) ----
+// To add/edit fixtures: use the Supabase Table Editor (table: fixtures).
+let fixtures = [];
 
 const monthOrder = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 let activeType = 'all';
+
+function shortMonth(dateObj) {
+  return monthOrder[dateObj.getUTCMonth()];
+}
 
 // ---- NEXT MATCH BANNER ----
 function buildNextMatchBanner() {
   const today = new Date();
   const upcoming = fixtures
     .filter(f => !f.result)
-    .map(f => ({ ...f, date: new Date(`${f.month} ${f.day} ${f.year}`) }))
-    .filter(f => f.date >= today)
-    .sort((a,b) => a.date - b.date);
+    .filter(f => f._date >= today)
+    .sort((a,b) => a._date - b._date);
 
   const banner = document.getElementById('nextMatchBanner');
   if (!upcoming.length) { banner.style.display = 'none'; return; }
 
   const next = upcoming[0];
-  const diff = Math.ceil((next.date - today) / (1000*60*60*24));
-  const isHome = next.home === 'NRCC Berlin';
+  const diff = Math.ceil((next._date - today) / (1000*60*60*24));
+  const isHome = next.home_team === 'NRCC Berlin';
 
+  banner.style.display = '';
   banner.innerHTML = `
     <div>
       <div class="next-label">⚡ Next Match</div>
-      <div class="next-teams">${next.home} <span style="color:var(--red-bright);font-size:1rem;">vs</span> ${next.away}</div>
+      <div class="next-teams">${next.home_team} <span style="color:var(--red-bright);font-size:1rem;">vs</span> ${next.away_team}</div>
       <div class="next-details">
-        <div class="next-detail">📅 ${next.day} ${next.month} ${next.year}</div>
-        <div class="next-detail">🕐 ${next.time}</div>
-        <div class="next-detail">📍 ${next.venue}</div>
+        <div class="next-detail">📅 ${next._day} ${next._month} ${next._year}</div>
+        ${next.match_time ? `<div class="next-detail">🕐 ${next.match_time}</div>` : ''}
+        <div class="next-detail">📍 ${next.venue || 'TBC'}</div>
         <div class="next-detail">${isHome ? '🏠 Home' : '✈️ Away'}</div>
         <span class="fixture-type ${next.type}">${next.type}</span>
       </div>
@@ -239,7 +234,7 @@ function renderSchedule() {
 
   let list = [...fixtures];
   if (activeType !== 'all') list = list.filter(f => f.type === activeType);
-  if (monthFilter !== 'all') list = list.filter(f => f.month === monthFilter);
+  if (monthFilter !== 'all') list = list.filter(f => f._month === monthFilter);
 
   const container = document.getElementById('scheduleContainer');
   container.innerHTML = '';
@@ -252,8 +247,8 @@ function renderSchedule() {
   // Group by month
   const grouped = {};
   list.forEach(f => {
-    if (!grouped[f.month]) grouped[f.month] = [];
-    grouped[f.month].push(f);
+    if (!grouped[f._month]) grouped[f._month] = [];
+    grouped[f._month].push(f);
   });
 
   // Sort months in calendar order
@@ -276,28 +271,28 @@ function renderSchedule() {
 
     const grid = group.querySelector('.fixtures-grid');
     grouped[month].forEach(f => {
-      const isHome = f.home === 'NRCC Berlin';
+      const isHome = f.home_team === 'NRCC Berlin';
       const card = document.createElement('div');
       card.className = `fixture-card${f.result ? ' result-'+f.result : ''}`;
       card.innerHTML = `
         <div class="fixture-date">
-          <div class="day">${f.day}</div>
-          <div class="month">${f.month}</div>
-          <div class="year">${f.year}</div>
+          <div class="day">${f._day}</div>
+          <div class="month">${f._month}</div>
+          <div class="year">${f._year}</div>
         </div>
         <div class="fixture-vs">
           <div class="team-block">
-            <div class="team-name">${f.home}</div>
+            <div class="team-name">${f.home_team}</div>
             <div class="team-sub">${isHome ? '🏠 Home' : '✈️ Away'}</div>
           </div>
           <div class="vs-badge">vs</div>
           <div class="team-block">
-            <div class="team-name">${f.away}</div>
+            <div class="team-name">${f.away_team}</div>
           </div>
         </div>
         <div class="fixture-meta">
-          <div class="fixture-venue">📍 ${f.venue}</div>
-          <div class="fixture-time">🕐 ${f.time}</div>
+          <div class="fixture-venue">📍 ${f.venue || 'TBC'}</div>
+          ${f.match_time ? `<div class="fixture-time">🕐 ${f.match_time}</div>` : ''}
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
             <span class="fixture-type ${f.type}">${f.type}</span>
             ${f.result ? `<span class="result-badge ${f.result}">${f.result === 'win' ? '✓ Win' : f.result === 'loss' ? '✗ Loss' : '= Draw'}</span>` : ''}
@@ -318,10 +313,33 @@ function fullMonth(abbr) {
   return m[abbr] || abbr;
 }
 
+async function loadFixtures() {
+  const container = document.getElementById('scheduleContainer');
+  container.innerHTML = '<div class="no-fixtures">Loading fixtures…</div>';
+
+  const { data, error } = await supabaseClient
+    .from('fixtures')
+    .select('*')
+    .order('match_date', { ascending: true });
+
+  if (error) {
+    console.error(error);
+    container.innerHTML = '<div class="no-fixtures">Could not load the schedule right now. Please try again shortly.</div>';
+    return;
+  }
+
+  fixtures = (data || []).map(f => {
+    const d = new Date(f.match_date + 'T00:00:00Z');
+    return { ...f, _date: d, _day: d.getUTCDate(), _month: shortMonth(d), _year: d.getUTCFullYear() };
+  });
+
+  buildNextMatchBanner();
+  renderSchedule();
+}
+
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-buildNextMatchBanner();
-renderSchedule();
+loadFixtures();
 </script>
 </body>
 </html>

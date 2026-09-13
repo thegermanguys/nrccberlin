@@ -110,36 +110,7 @@
   <div class="carousel-wrapper reveal">
     <div class="carousel-track">
       <div class="carousel-slides" id="carouselSlides">
-        <div class="carousel-slide" onclick="openLightbox(0)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🏏</div></div>
-          <div class="slide-caption"><div class="slide-label">Match Day</div><div class="slide-desc">NRCC Berlin vs. Berlin CC &middot; 2024</div></div>
-        </div>
-        <div class="carousel-slide" onclick="openLightbox(1)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🏆</div></div>
-          <div class="slide-caption"><div class="slide-label">Trophy Moment</div><div class="slide-desc">First tournament victory celebration</div></div>
-        </div>
-        <div class="carousel-slide" onclick="openLightbox(2)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🌿</div></div>
-          <div class="slide-caption"><div class="slide-label">Training Session</div><div class="slide-desc">Evening practice at the Berlin ground</div></div>
-        </div>
-        <div class="carousel-slide" onclick="openLightbox(3)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🇳🇵</div></div>
-          <div class="slide-caption"><div class="slide-label">Nepal Pride</div><div class="slide-desc">Celebrating Nepali heritage in Germany</div></div>
-        </div>
-        <div class="carousel-slide" onclick="openLightbox(4)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🤝</div></div>
-          <div class="slide-caption"><div class="slide-label">Team Spirit</div><div class="slide-desc">The Rhinos family &mdash; stronger together</div></div>
-        </div>
-        <div class="carousel-slide" onclick="openLightbox(5)">
-          <div class="slide-overlay"></div>
-          <div class="slide-inner"><div class="slide-icon">🎯</div></div>
-          <div class="slide-caption"><div class="slide-label">Bowling Drills</div><div class="slide-desc">Perfecting line and length since 2020</div></div>
-        </div>
+        <!-- populated live from Supabase -->
       </div>
     </div>
     <div class="carousel-controls">
@@ -150,32 +121,18 @@
   </div>
 </section>
 
-<!-- PHOTO UPLOAD + GRID -->
+<!-- PHOTO GRID -->
 <section id="photos-section">
   <div class="reveal" style="margin-bottom:32px;">
     <div class="section-label">All Photos</div>
     <h2 class="section-title" style="font-size:1.8rem;">Match &amp; Event Photos</h2>
     <div class="divider"></div>
-    <p class="section-sub">Upload your match photos to add them to the gallery. Photos are stored in the <code style="color:var(--cyan);font-size:0.85rem;">lib/gallery/</code> folder.</p>
-  </div>
-
-  <!-- UPLOAD ZONE -->
-  <div class="photo-upload-zone reveal" onclick="document.getElementById('galleryUpload').click()">
-    <div class="upload-icon">📸</div>
-    <div class="upload-title">Upload Match Photos</div>
-    <div class="upload-sub">Click to select photos or drag &amp; drop &middot; JPG, PNG, WEBP supported</div>
-    <input type="file" id="galleryUpload" class="upload-input" multiple accept="image/*" onchange="handlePhotoUpload(event)"/>
+    <p class="section-sub">New photos are added by the club &mdash; check back after every match!</p>
   </div>
 
   <!-- PHOTO GRID -->
   <div class="photo-grid" id="photoGrid">
-    <!-- placeholder cards -->
-    <div class="photo-item"><div class="photo-placeholder"><span>🏏</span><p>Match photos coming soon</p></div></div>
-    <div class="photo-item"><div class="photo-placeholder"><span>🏆</span><p>Tournament highlights</p></div></div>
-    <div class="photo-item"><div class="photo-placeholder"><span>🌿</span><p>Training sessions</p></div></div>
-    <div class="photo-item"><div class="photo-placeholder"><span>🎉</span><p>Team celebrations</p></div></div>
-    <div class="photo-item"><div class="photo-placeholder"><span>🇳🇵</span><p>Nepal Day &amp; events</p></div></div>
-    <div class="photo-item"><div class="photo-placeholder"><span>🤝</span><p>Community moments</p></div></div>
+    <!-- populated live from Supabase -->
   </div>
 </section>
 
@@ -207,13 +164,19 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
 <script src="js/shared.js"></script>
 <script>
+// ---- GALLERY DATA (loaded live from Supabase) ----
+// To add photos: upload the file to the "gallery-photos" storage bucket,
+// then add a row in the gallery_photos table with that filename as photo_path.
+let photos = [];
+
 // ---- CAROUSEL ----
 let currentSlide=0;
-const totalSlides=6;
 function getVisible(){return window.innerWidth<900?1:3;}
-function getMax(){return totalSlides-getVisible();}
+function getMax(){return Math.max(0, photos.length-getVisible());}
 function buildDots(){
   const d=document.getElementById('carouselDots');d.innerHTML='';
   for(let i=0;i<=getMax();i++){const dot=document.createElement('div');dot.className='dot'+(i===0?' active':'');dot.onclick=()=>goToSlide(i);d.appendChild(dot);}
@@ -225,70 +188,74 @@ function goToSlide(n){
   document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i===currentSlide));
 }
 function carousel(dir){
+  if (!photos.length) return;
   const next=currentSlide+dir;
   goToSlide(next>getMax()?0:next<0?getMax():next);
 }
-buildDots();
-setInterval(()=>carousel(1),4500);
 
-// ---- PHOTO UPLOAD ----
-let uploadedPhotos=[];
-function handlePhotoUpload(e){
-  const files=Array.from(e.target.files);
-  files.forEach(file=>{
-    const url=URL.createObjectURL(file);
-    uploadedPhotos.push({url,name:file.name.replace(/\.[^/.]+$/,'')});
-  });
-  renderPhotos();
+function renderCarousel(){
+  const track=document.getElementById('carouselSlides');
+  if(!photos.length){
+    track.innerHTML='<div class="carousel-slide"><div class="slide-inner"><div class="slide-icon">🏏</div></div><div class="slide-caption"><div class="slide-label">No photos yet</div><div class="slide-desc">Check back after the next match</div></div></div>';
+    document.getElementById('carouselDots').innerHTML='';
+    return;
+  }
+  track.innerHTML = photos.map((p,i)=>`
+    <div class="carousel-slide" onclick="openLightbox(${i})">
+      <img src="${galleryPhotoUrl(p.photo_path)}" alt="${p.caption||''}" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>
+      <div class="slide-overlay"></div>
+      <div class="slide-caption"><div class="slide-label">${p.caption||''}</div><div class="slide-desc">${p.category||''}</div></div>
+    </div>
+  `).join('');
+  buildDots();
 }
+
+// ---- PHOTO GRID ----
 function renderPhotos(){
-  if(!uploadedPhotos.length)return;
   const grid=document.getElementById('photoGrid');
+  if(!photos.length){
+    grid.innerHTML='<div class="photo-item"><div class="photo-placeholder"><span>🏏</span><p>Match photos coming soon</p></div></div>';
+    return;
+  }
   grid.innerHTML='';
-  uploadedPhotos.forEach((p,i)=>{
+  photos.forEach((p,i)=>{
     const item=document.createElement('div');item.className='photo-item';
-    item.onclick=()=>openPhotoLightbox(i);
-    item.innerHTML=`<img src="${p.url}" alt="${p.name}"/><div class="photo-item-label">${p.name}</div>`;
+    item.onclick=()=>openLightbox(i);
+    item.innerHTML=`<img src="${galleryPhotoUrl(p.photo_path)}" alt="${p.caption||''}"/><div class="photo-item-label">${p.caption||''}</div>`;
     grid.appendChild(item);
   });
 }
 
+async function loadGallery(){
+  const { data, error } = await supabaseClient
+    .from('gallery_photos')
+    .select('*')
+    .order('sort_order', { ascending: true });
+
+  if (error) { console.error(error); photos = []; }
+  else { photos = data || []; }
+
+  renderCarousel();
+  renderPhotos();
+}
+
 // ---- LIGHTBOX ----
-const slides=[
-  {emoji:'🏏',caption:'Match Day – NRCC Berlin vs. Berlin CC · 2024'},
-  {emoji:'🏆',caption:'Trophy Moment – First tournament victory'},
-  {emoji:'🌿',caption:'Training Session – Evening practice at the Berlin ground'},
-  {emoji:'🇳🇵',caption:'Nepal Pride – Celebrating Nepali heritage in Germany'},
-  {emoji:'🤝',caption:'Team Spirit – The Rhinos family'},
-  {emoji:'🎯',caption:'Bowling Drills – Perfecting line and length'},
-];
 let currentLightbox=0;
 function openLightbox(i){
+  if (!photos.length) return;
   currentLightbox=i;
-  document.getElementById('lightboxImg').src='';
-  document.getElementById('lightboxImg').style.display='none';
-  document.getElementById('lightbox').dataset.mode='carousel';
-  document.getElementById('lightboxCaption').textContent=slides[i].caption;
-  // Show emoji as placeholder when no real image
-  document.getElementById('lightboxCaption').textContent=slides[i].caption;
-  document.getElementById('lightbox').classList.add('open');
-  document.body.style.overflow='hidden';
-}
-function openPhotoLightbox(i){
-  currentLightbox=i;
-  document.getElementById('lightbox').dataset.mode='photos';
-  document.getElementById('lightboxImg').src=uploadedPhotos[i].url;
+  document.getElementById('lightboxImg').src=galleryPhotoUrl(photos[i].photo_path);
   document.getElementById('lightboxImg').style.display='block';
-  document.getElementById('lightboxCaption').textContent=uploadedPhotos[i].name;
+  document.getElementById('lightboxCaption').textContent=photos[i].caption||'';
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow='hidden';
 }
 function closeLightbox(){document.getElementById('lightbox').classList.remove('open');document.body.style.overflow='';}
 function closeLightboxOutside(e){if(e.target===document.getElementById('lightbox'))closeLightbox();}
 function lightboxNav(dir){
-  const mode=document.getElementById('lightbox').dataset.mode;
-  if(mode==='photos'){const next=(currentLightbox+dir+uploadedPhotos.length)%uploadedPhotos.length;openPhotoLightbox(next);}
-  else{const next=(currentLightbox+dir+slides.length)%slides.length;openLightbox(next);}
+  if (!photos.length) return;
+  const next=(currentLightbox+dir+photos.length)%photos.length;
+  openLightbox(next);
 }
 document.addEventListener('keydown',e=>{
   if(!document.getElementById('lightbox').classList.contains('open'))return;
@@ -296,6 +263,9 @@ document.addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft')lightboxNav(-1);
   if(e.key==='ArrowRight')lightboxNav(1);
 });
+
+setInterval(()=>carousel(1),4500);
+loadGallery();
 </script>
 </body>
 </html>
