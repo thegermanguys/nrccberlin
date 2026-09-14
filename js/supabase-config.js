@@ -7,6 +7,7 @@
 // ============================================================
 const SUPABASE_URL = "https://fahyqyfmdkfrvaqevhyc.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_00jBmgY7osTCEIJ9TrjKug_Wh_Xem_I";
+WEB3FORMS_ACCESS_KEY = "6394593b-2b5e-464d-95f3-04f66fe4e4f5";
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -19,3 +20,4 @@ function galleryPhotoUrl(path) {
   if (!path) return null;
   return supabaseClient.storage.from('gallery-photos').getPublicUrl(path).data.publicUrl;
 }
+const WEB3FORMS_ACCESS_KEY = "6394593b-2b5e-464d-95f3-04f66fe4e4f5";

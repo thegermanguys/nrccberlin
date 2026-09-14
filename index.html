@@ -304,7 +304,7 @@ async function submitForm(){
   const originalLabel=btn.textContent;
   btn.disabled=true;btn.textContent='Sending...';
 
-  const { error } = await supabaseClient.from('join_requests').insert({
+  const application = {
     first_name: document.getElementById('fname').value.trim(),
     last_name: document.getElementById('lname').value.trim(),
     email: document.getElementById('email').value.trim(),
@@ -312,7 +312,29 @@ async function submitForm(){
     playing_role: document.getElementById('role').value,
     experience: document.getElementById('exp').value || null,
     message: document.getElementById('message').value.trim() || null
-  });
+  };
+
+  const { error } = await supabaseClient.from('join_requests').insert(application);
+
+  // Best-effort email notification — never blocks the applicant's success message
+  // even if this fails (e.g. key not set up yet, or a network hiccup).
+  if (typeof WEB3FORMS_ACCESS_KEY !== 'undefined' && WEB3FORMS_ACCESS_KEY && !WEB3FORMS_ACCESS_KEY.startsWith('YOUR-')) {
+    fetch('https://api.web3forms.com/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: 'New Join Request — NRCC Berlin',
+        from_name: 'NRCC Berlin Website',
+        name: `${application.first_name} ${application.last_name}`,
+        email: application.email,
+        phone: application.phone || 'Not provided',
+        role: application.playing_role,
+        experience: application.experience || 'Not provided',
+        message: application.message || 'None'
+      })
+    }).catch(err => console.error('Email notification failed:', err));
+  }
 
   btn.disabled=false;btn.textContent=originalLabel;
 
