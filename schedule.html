@@ -258,33 +258,37 @@ function renderSchedule() {
     return;
   }
 
-  // Group by month
+  // Group by month + year (so e.g. Aug 2025 and Aug 2026 don't merge together)
   const grouped = {};
   list.forEach(f => {
-    if (!grouped[f._month]) grouped[f._month] = [];
-    grouped[f._month].push(f);
+    const key = f._month + '-' + f._year;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(f);
   });
 
-  // Sort months in calendar order
-  const sortedMonths = Object.keys(grouped).sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+  // Most recent month first, oldest last
+  const sortedKeys = Object.keys(grouped).sort((a,b) => grouped[b][0]._date - grouped[a][0]._date);
 
-  sortedMonths.forEach(month => {
+  sortedKeys.forEach(key => {
+    const monthGroup = grouped[key];
+    const month = monthGroup[0]._month;
+    const year = monthGroup[0]._year;
     const group = document.createElement('div');
     group.className = 'month-group reveal';
 
-    const count = grouped[month].length;
+    const count = monthGroup.length;
     group.innerHTML = `
       <div class="month-header">
-        <div class="month-label">${fullMonth(month)}</div>
+        <div class="month-label">${fullMonth(month)} ${year}</div>
         <div class="month-line"></div>
         <div class="month-count">${count} match${count!==1?'es':''}</div>
       </div>
-      <div class="fixtures-grid" id="grid-${month}"></div>
+      <div class="fixtures-grid" id="grid-${key}"></div>
     `;
     container.appendChild(group);
 
     const grid = group.querySelector('.fixtures-grid');
-    grouped[month].forEach(f => {
+    monthGroup.forEach(f => {
       const isHome = f.home_team === 'NRCC Berlin';
       const card = document.createElement('div');
       card.className = `fixture-card${f.result ? ' result-'+f.result : ''}`;
