@@ -21,3 +21,4 @@ function galleryPhotoUrl(path) {
   return supabaseClient.storage.from('gallery-photos').getPublicUrl(path).data.publicUrl;
 }
 const WEB3FORMS_ACCESS_KEY = "6394593b-2b5e-464d-95f3-04f66fe4e4f5";
+const WEB3FORMS_ACCESS_KEY = "6394593b-2b5e-464d-95f3-04f66fe4e4f5";
